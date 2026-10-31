@@ -1,0 +1,405 @@
+local success, result = pcall(function()
+	-- ============================================================================
+	-- SCRIPT NAME: ZFscVD : PHANTOM ADVANCED (VIP & ANTI-GRAB/HOOK UPDATE)
+	-- ============================================================================
+
+	local _G = getgenv()
+	if _G.ZFscVD_Executed then 
+		_G.Running = false 
+		task.wait(0.3) 
+	end
+	_G.ZFscVD_Executed = true
+	_G.Running = true
+
+	local Workspace = game:GetService("Workspace")
+	local Players = game:GetService("Players")
+	local LocalPlayer = Players.LocalPlayer
+	local RunService = game:GetService("RunService")
+	local VirtualInputManager = game:GetService("VirtualInputManager")
+	local CoreGui = game:GetService("CoreGui")
+	local UserInputService = game:GetService("UserInputService")
+
+	local Config = {
+		AutoMode = false,
+		GhostMode = false,
+		SuperESP = false,
+		AntiHit = false,
+		AntiGrab = false,
+		AntiHook = false,
+		Invisible = false,
+		CloneVoid = false,
+		VIPUnlocked = false
+	}
+
+	-- 1. MEMBUAT TOMBOL IKON MELAYANG (TOGGLE UI)
+	local toggleGui = Instance.new("ScreenGui")
+	toggleGui.Name = "ZFscVD_FloatingToggle"
+	toggleGui.ResetOnSpawn = false
+	toggleGui.Parent = CoreGui
+
+	local iconBtn = Instance.new("TextButton")
+	iconBtn.Size = UDim2.new(0, 45, 0, 45)
+	iconBtn.Position = UDim2.new(0, 20, 0, 150)
+	iconBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	iconBtn.BorderColor3 = Color3.fromRGB(255, 0, 0)
+	iconBtn.BorderSizePixel = 2
+	iconBtn.Text = "ZF"
+	iconBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	iconBtn.TextSize = 16
+	iconBtn.Font = Enum.Font.SourceSansBold
+	iconBtn.Parent = toggleGui
+
+	-- Tombol Ikon Bisa Digeser
+	local dragging, dragInput, dragStart, startPos
+	iconBtn.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			dragStart = input.Position
+			startPos = iconBtn.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	iconBtn.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - dragStart
+			iconBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
+
+	-- 2. MEMUAT KAVO UI LIBRARY
+	local libraryUrl = "https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"
+	local uiSuccess, KavoLib = pcall(function()
+		return loadstring(game:HttpGet(libraryUrl))()
+	end)
+
+	if not uiSuccess or not KavoLib then
+		warn("[ZFscVD] Gagal memuat UI.")
+		return
+	end
+
+	local Window = KavoLib.CreateLib("ZFscVD : PHANTOM ADVANCED", "BloodTheme")
+
+	-- Tombol Toggle Sembunyikan/Tampilkan UI Utama
+	local uiVisible = true
+	iconBtn.MouseButton1Click:Connect(function()
+		uiVisible = not uiVisible
+		for _, gui in ipairs(CoreGui:GetChildren()) do
+			if gui:IsA("ScreenGui") and gui ~= toggleGui then
+				local mainFrame = gui:FindFirstChild("Main") or gui:FindFirstChild("Frame")
+				if mainFrame then
+					mainFrame.Visible = uiVisible
+				end
+			end
+		end
+	end)
+
+	-- Pembuatan Tab Menu
+	local MainTab = Window:NewTab("Phantom System")
+	local MainSection = MainTab:NewSection("Fitur Utama & Teleport")
+
+	local VisualTab = Window:NewTab("Visual & Trick")
+	local VisualSection = VisualTab:NewSection("Visual & Penonton")
+
+	local EspTab = Window:NewTab("Super ESP")
+	local EspSection = EspTab:NewSection("Informasi Map")
+
+	local VipTab = Window:NewTab("⭐ VIP Menu")
+	local VipSection = VipTab:NewSection("Sistem VIP & Anti-Catch")
+
+	-- Tombol & Fitur Menu Utama
+	MainSection:NewToggle("Auto Teleport ke Generator", "Otomatis pindah ke genset dan perbaiki", function(v)
+		Config.AutoMode = v
+	end)
+
+	MainSection:NewToggle("Auto Skill Check", "Otomatis tekan spasi saat skill check", function(v)
+		-- Aktif otomatis via listener
+	end)
+
+	MainSection:NewToggle("Anti-Hit / Anti-Damage", "Mencegah damage dan efek hit dari musuh", function(v)
+		Config.AntiHit = v
+	end)
+
+	VisualSection:NewToggle("Invisible Mode (Ghost)", "Membuat karakter transparan total", function(v)
+		Config.Invisible = v
+		local char = LocalPlayer.Character
+		if char then
+			for _, p in ipairs(char:GetDescendants()) do
+				if p:IsA("BasePart") or p:IsA("Decal") then
+					p.Transparency = v and 1 or 0
+				end
+			end
+		end
+	end)
+
+	VisualSection:NewToggle("Manipulasi Penonton (Clone ke Void)", "Menduplikasi karakter ke void untuk mengecoh penonton", function(v)
+		Config.CloneVoid = v
+		if v then
+			local char = LocalPlayer.Character
+			if char and char:FindFirstChild("HumanoidRootPart") then
+				local clone = char:Clone()
+				clone.Name = "ZFscVD_SpectatorClone"
+				clone.Parent = Workspace
+				if clone:FindFirstChild("HumanoidRootPart") then
+					clone.HumanoidRootPart.CFrame = CFrame.new(0, -9999, 0)
+				end
+			end
+		else
+			local oldClone = Workspace:FindFirstChild("ZFscVD_SpectatorClone")
+			if oldClone then oldClone:Destroy() end
+		end
+	end)
+
+	EspSection:NewToggle("Aktifkan Super ESP", "Melacak generator, gate, dan pemain", function(v)
+		Config.SuperESP = v
+	end)
+
+	-- ============================================================================
+	-- FITUR VIP & KEY SYSTEM
+	-- ============================================================================
+	VipSection:NewButton("🔑 Masukkan Key VIP", "Gunakan key: FREE_KEY1", function()
+		-- Membuat Popup Input Key Sederhana
+		local keyGui = Instance.new("ScreenGui")
+		keyGui.Name = "ZFscVD_KeySystem"
+		keyGui.ResetOnSpawn = false
+		keyGui.Parent = CoreGui
+
+		local frame = Instance.new("Frame")
+		frame.Size = UDim2.new(0, 300, 0, 160)
+		frame.Position = UDim2.new(0.5, -150, 0.5, -80)
+		frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+		frame.BorderSizePixel = 2
+		frame.BorderColor3 = Color3.fromRGB(255, 0, 0)
+		frame.Parent = keyGui
+
+		local title = Instance.new("TextLabel")
+		title.Size = UDim2.new(1, 0, 0, 40)
+		title.BackgroundTransparency = 1
+		title.Text = "MASUKKAN KEY VIP"
+		title.TextColor3 = Color3.fromRGB(255, 255, 255)
+		title.TextSize = 16
+		title.Font = Enum.Font.SourceSansBold
+		title.Parent = frame
+
+		local textBox = Instance.new("TextBox")
+		textBox.Size = UDim2.new(0, 260, 0, 40)
+		textBox.Position = UDim2.new(0.5, -130, 0, 50)
+		textBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+		textBox.PlaceholderText = "Ketik key di sini..."
+		textBox.Text = ""
+		textBox.TextSize = 14
+		textBox.Parent = frame
+
+		local submitBtn = Instance.new("TextButton")
+		submitBtn.Size = UDim2.new(0, 120, 0, 35)
+		submitBtn.Position = UDim2.new(0.5, -60, 0, 105)
+		submitBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+		submitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		submitBtn.Text = "SUBMIT"
+		submitBtn.TextSize = 14
+		submitBtn.Font = Enum.Font.SourceSansBold
+		submitBtn.Parent = frame
+
+		submitBtn.MouseButton1Click:Connect(function()
+			if textBox.Text == "FREE_KEY1" then
+				Config.VIPUnlocked = true
+				keyGui:Destroy()
+				game:GetService("StarterGui"):SetCore("SendNotification", {
+					Title = "VIP Success",
+					Text = "Key benar! Fitur VIP Terbuka.",
+					Duration = 3
+				})
+			else
+				textBox.Text = ""
+				textBox.PlaceholderText = "Key Salah! Coba lagi."
+			end
+		end)
+	end)
+
+	VipSection:NewToggle("Anti-Grab (Lepas & Sembuh saat Diangkat)", "Otomatis jatuh dan pulih jika terciduk killer", function(v)
+		if not Config.VIPUnlocked then
+			warn("Harap masukkan key VIP terlebih dahulu!")
+			return
+		end
+		Config.AntiGrab = v
+	end)
+
+	VipSection:NewToggle("Anti-Hook (Kebal Dipasang ke Hook)", "Mencegah killer memasang karakter ke hook", function(v)
+		if not Config.VIPUnlocked then
+			warn("Harap masukkan key VIP terlebih dahulu!")
+			return
+		end
+		Config.AntiHook = v
+	end)
+
+	VipSection:NewButton("Set Role: Survivor", "Mengatur status lokal sebagai Survivor", function()
+		if not Config.VIPUnlocked then warn("Masukkan key VIP dulu!") return end
+		LocalPlayer:SetAttribute("Role", "Survivor")
+		print("[ZFscVD VIP] Role diset ke Survivor")
+	end)
+
+	VipSection:NewButton("Set Role: Killer", "Mengatur status lokal sebagai Killer", function()
+		if not Config.VIPUnlocked then warn("Masukkan key VIP dulu!") return end
+		LocalPlayer:SetAttribute("Role", "Killer")
+		print("[ZFscVD VIP] Role diset ke Killer")
+	end)
+
+	-- ============================================================================
+	-- 3. AUTOMATION & LOGIC LOOPS
+	-- ============================================================================
+	LocalPlayer.PlayerGui.DescendantAdded:Connect(function(descendant)
+		if (descendant.Name == "SkillCheck" or descendant.Name == "Pointer") then
+			task.wait(math.random(35, 45) / 1000)
+			VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+			task.wait(0.02)
+			VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+		end
+	end)
+
+	-- Main Loop untuk Anti-Hit, Anti-Grab, & Anti-Hook
+	RunService.Heartbeat:Connect(function()
+		if not _G.Running then return end
+		
+		local char = LocalPlayer.Character
+		local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		
+		if char and humanoid and root then
+			-- Fitur Anti-Hit
+			if Config.AntiHit then
+				if humanoid.Health < humanoid.MaxHealth and humanoid.Health > 0 then
+					humanoid.Health = humanoid.MaxHealth
+				end
+				char:SetAttribute("IsHit", false)
+				char:SetAttribute("Stunned", false)
+				char:SetAttribute("Grabbed", false)
+				humanoid.PlatformStand = false
+			end
+
+			-- Fitur Anti-Grab (Jika terangkat/diangkat killer, langsung lepas dan sembuh)
+			if Config.AntiGrab and Config.VIPUnlocked then
+				local isGrabbed = char:GetAttribute("Grabbed") or char:GetAttribute("IsCarried") or humanoid.PlatformStand
+				if isGrabbed then
+					char:SetAttribute("Grabbed", false)
+					char:SetAttribute("IsCarried", false)
+					humanoid.PlatformStand = false
+					humanoid.Health = humanoid.MaxHealth
+					root.CFrame = root.CFrame + Vector3.new(0, 4, 3)
+				end
+			end
+
+			-- Fitur Anti-Hook (Mencegah prompt hook terpicu di dekat kita)
+			if Config.AntiHook and Config.VIPUnlocked then
+				for _, prompt in ipairs(Workspace:GetDescendants()) do
+					if prompt:IsA("ProximityPrompt") then
+						local pText = (prompt.ActionText .. " " .. prompt.ObjectText):lower()
+						if pText:match("hook") or pText:match("gantung") then
+							if (root.Position - prompt.Parent.Position).Magnitude < 6 then
+								prompt.Enabled = false
+								root.CFrame = root.CFrame + Vector3.new(4, 0, 4)
+							else
+								prompt.Enabled = true
+							end
+						end
+					end
+				end
+			end
+		end
+	end)
+
+	-- Teleport Loop Generator
+	task.spawn(function()
+		while _G.Running do
+			if Config.AutoMode then
+				local char = LocalPlayer.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart")
+				if root then
+					local targetGen = nil
+					for _, obj in ipairs(Workspace:GetDescendants()) do
+						if (obj.Name:match("Generator") or obj.Name:match("Gen")) and obj:IsA("Model") then
+							local progress = obj:GetAttribute("Progress") or 0
+							if progress < 100 then
+								targetGen = obj
+								break
+							end
+						end
+					end
+					
+					if targetGen then
+						local part = targetGen.PrimaryPart or targetGen:FindFirstChildWhichIsA("BasePart", true)
+						local prompt = targetGen:FindFirstChildWhichIsA("ProximityPrompt", true)
+						if part then
+							root.CFrame = part.CFrame + Vector3.new(0, 2, 2)
+							if prompt and prompt.Enabled then fireproximityprompt(prompt) end
+						end
+					end
+				end
+			end
+			task.wait(0.5)
+		end
+	end)
+
+	-- ESP System
+	local function createLocalLabel(object, text, color)
+		local old = object:FindFirstChild("ZFscVD_PhantomESP")
+		if old then old:Destroy() end
+
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "ZFscVD_PhantomESP"
+		bb.AlwaysOnTop = true
+		bb.Size = UDim2.new(0, 150, 0, 40)
+		bb.StudsOffset = Vector3.new(0, 3, 0)
+		bb.Parent = object
+
+		local lbl = Instance.new("TextLabel")
+		lbl.Size = UDim2.new(1, 0, 1, 0)
+		lbl.BackgroundTransparency = 1
+		lbl.Text = text
+		lbl.TextColor3 = color
+		lbl.TextSize = 12
+		lbl.Font = Enum.Font.SourceSansBold
+		lbl.TextStrokeTransparency = 0
+		lbl.Parent = bb
+	end
+
+	task.spawn(function()
+		while _G.Running do
+			if Config.SuperESP then
+				for _, obj in ipairs(Workspace:GetDescendants()) do
+					if (obj.Name:match("Generator") or obj.Name:match("Gen")) and obj:IsA("Model") then
+						local progress = obj:GetAttribute("Progress") or 0
+						createLocalLabel(obj, "GEN ["..tostring(progress).."%]", Color3.fromRGB(255, 0, 0))
+					end
+				end
+				for _, p in ipairs(Players:GetPlayers()) do
+					if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+						local isKiller = p:GetAttribute("Role") == "Killer" or p.TeamColor == BrickColor.new("Bright red")
+						local pColor = isKiller and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
+						local pText = isKiller and "⚠️ KILLER ⚠️" or ("SURVIVOR: " .. p.Name)
+						createLocalLabel(p.Character.HumanoidRootPart, pText, pColor)
+					end
+				end
+			else
+				for _, v in ipairs(Workspace:GetDescendants()) do
+					if v.Name == "ZFscVD_PhantomESP" then v:Destroy() end
+				end
+			end
+			task.wait(2)
+		end
+	end)
+end)
+
+if not success then
+	warn("Loadstring error:", result)
+end
